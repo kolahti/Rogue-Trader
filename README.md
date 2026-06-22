@@ -57,7 +57,9 @@ npm run typecheck  # tsc --noEmit
 ## Project structure
 
 ```
-server/        file API — ships saved as JSON in ships/
+api/           Vercel serverless routes (Blob storage in production)
+lib/           shared ship validation + Blob helpers
+server/        local dev file API — ships saved as JSON in ships/
 src/
   api/         fetch helpers for ship CRUD
   engine/      types · registry (closed vocabulary) · compute (the fold)
@@ -76,3 +78,41 @@ The engine is checked against the §1.5 worked example (Power 45/1→44 spare, M
 ## Not in this prototype (deferred to full build)
 
 Postgres/JSONB persistence + versioning, authoritative server recompute, the personal Library, publish/render to CDN, and auth/multi-tenancy — all described in the Implementation Playbook.
+
+## Deploy to Vercel
+
+The app is configured for [Vercel](https://vercel.com) with [Vercel Blob](https://vercel.com/docs/vercel-blob) storage (no database).
+
+### Steps
+
+1. Push this repo to GitHub ([kolahti/Rogue-Trader](https://github.com/kolahti/Rogue-Trader))
+2. In Vercel: **Add New Project** → import the repo
+3. Framework preset: **Vite** (auto-detected from `vercel.json`)
+4. In the project: **Storage** → **Connect Store** → **Blob**
+5. Deploy — Vercel injects `BLOB_READ_WRITE_TOKEN` automatically
+
+### How it works on Vercel
+
+| Environment | Storage | API |
+|-------------|---------|-----|
+| **Local dev** (`npm run dev`) | `ships/*.json` on disk | `server/index.js` on :3001 |
+| **Vercel** | Blob files at `ships/<id>.json` | Serverless functions in `api/ships/` |
+
+Share links work the same: `https://your-app.vercel.app/s/ship_abc123`
+
+### Local dev with Blob (optional)
+
+To test Blob storage locally, pull env vars from Vercel:
+
+```bash
+npx vercel env pull .env.local
+```
+
+Then run the Vercel dev server instead of the file API:
+
+```bash
+npx vercel dev
+```
+
+Without Blob credentials, local `npm run dev` continues to use the file-based API in `server/`.
+

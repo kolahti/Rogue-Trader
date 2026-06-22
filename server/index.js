@@ -3,62 +3,28 @@ import { createReadStream, existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { randomBytes } from "node:crypto";
+import {
+  blankSheet,
+  generateId,
+  isValidShipId,
+  validateSheet,
+} from "../lib/ships-core.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
 const SHIPS_DIR = path.join(ROOT, "ships");
 const DIST_DIR = path.join(ROOT, "dist");
 
-const SCHEMA_VERSION = 2;
-const REGISTRY_VERSION = 2;
 const isProd = process.env.NODE_ENV === "production";
 const PORT = Number(process.env.PORT) || (isProd ? 3000 : 3001);
 
 const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8" };
 
-function blankSheet(id) {
-  return {
-    id,
-    name: "Untitled Voidship",
-    schemaVersion: SCHEMA_VERSION,
-    registryVersion: REGISTRY_VERSION,
-    hull: {
-      id: "hull",
-      type_: "Hull",
-      name: "New Hull",
-      description: "Enter your hull's raw base numbers as effect rows.",
-      enabled: true,
-      bindings: [
-        { attribute: "space", side: "total", op: "ADD", value: 0 },
-        { attribute: "shipPoints", side: "total", op: "ADD", value: 0 },
-        { attribute: "power", side: "total", op: "ADD", value: 0 },
-        { attribute: "population", side: "total", op: "ADD", value: 0 },
-        { attribute: "morale", op: "SET_MAX", value: 100 },
-      ],
-    },
-    elements: [],
-  };
-}
-
-function generateId() {
-  return "ship_" + randomBytes(8).toString("base64url");
-}
-
 function shipFilePath(id) {
-  if (!/^ship_[a-zA-Z0-9_-]+$/.test(id)) return null;
+  if (!isValidShipId(id)) return null;
   const resolved = path.resolve(SHIPS_DIR, `${id}.json`);
   if (!resolved.startsWith(path.resolve(SHIPS_DIR) + path.sep)) return null;
   return resolved;
-}
-
-function validateSheet(sheet) {
-  if (!sheet || typeof sheet !== "object") return "Invalid body";
-  if (sheet.schemaVersion !== SCHEMA_VERSION) return "Unsupported schemaVersion";
-  if (sheet.registryVersion !== REGISTRY_VERSION) return "Unsupported registryVersion";
-  if (!sheet.hull || typeof sheet.hull !== "object") return "Invalid ShipConfig: missing hull";
-  if (!Array.isArray(sheet.elements)) return "Invalid ShipConfig: elements must be an array";
-  return null;
 }
 
 async function readJsonBody(req) {
@@ -98,7 +64,10 @@ async function serveStatic(req, res) {
 
   const filePath = path.join(DIST_DIR, urlPath);
   const resolved = path.resolve(filePath);
-  if (!resolved.startsWith(path.resolve(DIST_DIR) + path.sep) && resolved !== path.resolve(DIST_DIR, "index.html")) {
+  if (
+    !resolved.startsWith(path.resolve(DIST_DIR) + path.sep) &&
+    resolved !== path.resolve(DIST_DIR, "index.html")
+  ) {
     res.writeHead(403);
     res.end("Forbidden");
     return;
