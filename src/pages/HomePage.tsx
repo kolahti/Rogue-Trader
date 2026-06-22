@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createShip } from "../api/ships";
+import { createShip, ShipApiError } from "../api/ships";
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -13,8 +13,12 @@ export function HomePage() {
       .then(({ id }) => {
         if (!cancelled) navigate(`/s/${id}`, { replace: true });
       })
-      .catch(() => {
+      .catch((err) => {
         if (cancelled) return;
+        if (err instanceof ShipApiError) {
+          setError(err.message);
+          return;
+        }
         setError(
           "Could not create a ship. Make sure you ran npm run dev (starts both Vite and the API on port 3001)."
         );

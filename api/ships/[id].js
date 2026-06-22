@@ -26,7 +26,8 @@ export default async function handler(req, res) {
     }
 
     if (req.method === "PUT") {
-      const sheet = req.body;
+      const sheet =
+        typeof req.body === "string" ? JSON.parse(req.body) : req.body;
       const validationError = validateSheet(sheet);
       if (validationError) {
         res.status(400).json({ error: validationError });
@@ -41,6 +42,10 @@ export default async function handler(req, res) {
     res.status(405).json({ error: "Method not allowed" });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    const message =
+      err && typeof err === "object" && "message" in err && typeof err.message === "string"
+        ? err.message
+        : "Internal server error";
+    res.status(500).json({ error: message });
   }
 }
