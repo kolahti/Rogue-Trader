@@ -1,0 +1,7 @@
+node_modules
+dist
+dist-ssr
+ships
+*.local
+.vite
+.DS_Store
