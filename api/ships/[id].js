@@ -1,3 +1,4 @@
+import { isBlobConfigured } from "../../lib/blob-auth.js";
 import { isValidShipId, validateSheet } from "../../lib/ships-core.js";
 import { loadShipBlob, saveShipBlob } from "../../lib/ships-storage-blob.js";
 
@@ -9,8 +10,11 @@ export default async function handler(req, res) {
     return;
   }
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    res.status(503).json({ error: "Blob storage is not configured" });
+  if (!isBlobConfigured()) {
+    res.status(503).json({
+      error:
+        "Blob storage is not connected. In Vercel: Project → Storage → connect a Blob store to this project, then redeploy.",
+    });
     return;
   }
 
