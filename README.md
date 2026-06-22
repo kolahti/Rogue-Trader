@@ -81,15 +81,15 @@ Postgres/JSONB persistence + versioning, authoritative server recompute, the per
 
 ## Deploy to Vercel
 
-The app is configured for [Vercel](https://vercel.com) with [Vercel Blob](https://vercel.com/docs/vercel-blob) storage (no database).
+The app uses [Vercel Blob](https://vercel.com/docs/vercel-blob) (`@vercel/blob` v2+ with OIDC auth).
 
 ### Steps
 
-1. Push this repo to GitHub ([kolahti/Rogue-Trader](https://github.com/kolahti/Rogue-Trader))
-2. In Vercel: **Add New Project** → import the repo
-3. Framework preset: **Vite** (auto-detected from `vercel.json`)
-4. In the project: **Storage** → **Connect Store** → **Blob**
-5. Deploy — Vercel injects `BLOB_READ_WRITE_TOKEN` automatically
+1. Import [kolahti/Rogue-Trader](https://github.com/kolahti/Rogue-Trader) on Vercel
+2. **Storage** → **Connect Database** → **Blob** → create store
+3. **Connect to Project** → select Rogue-Trader → enable **Production** (and Preview if needed)
+4. Ensure the connection adds **`BLOB_STORE_ID`** (OIDC, recommended) or check **“Add read-write token”** for `BLOB_READ_WRITE_TOKEN`
+5. **Redeploy** after connecting storage
 
 ### How it works on Vercel
 

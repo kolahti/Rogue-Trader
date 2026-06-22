@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   if (!isBlobConfigured()) {
     res.status(503).json({
       error:
-        "Blob storage is not connected. In Vercel: Project → Storage → connect a Blob store to this project, then redeploy.",
+        "Blob storage is not connected. In Vercel: Storage → connect a Blob store to this project (adds BLOB_STORE_ID or BLOB_READ_WRITE_TOKEN), then redeploy.",
     });
     return;
   }
