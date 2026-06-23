@@ -1,5 +1,5 @@
 import type { AttrSummary, ComputeResult } from "../engine/types";
-import { REGISTRY, labelOf } from "../engine/registry";
+import { REGISTRY, REGISTRY_BY_ID, DASHBOARD_SECTIONS, labelOf } from "../engine/registry";
 import { useBuilder } from "../store/builderStore";
 
 export function SummaryView({
@@ -11,6 +11,39 @@ export function SummaryView({
 }) {
   const { summary, diagnostics } = result;
   const openBreakdown = useBuilder((s) => s.openBreakdown);
+  const crew = useBuilder((s) => s.sheet.crewComposition);
+
+  const renderPanel = (attrId: string) => {
+    const attr = REGISTRY_BY_ID[attrId];
+    const s = attr ? summary[attrId] : undefined;
+    if (!attr || !s) return null;
+    const panelClass =
+      "sum-panel k-" + s.kind.toLowerCase() + panelState(s) + (readOnly ? " read-only" : "");
+    const body = (
+      <>
+        <div className="sum-label">
+          {attr.label}
+          {!readOnly && <span className="sum-explain" aria-hidden="true">why?</span>}
+        </div>
+        <PanelBody s={s} id={attrId} />
+      </>
+    );
+    return readOnly ? (
+      <div key={attrId} className={panelClass}>
+        {body}
+      </div>
+    ) : (
+      <button
+        key={attrId}
+        className={panelClass}
+        onClick={() => openBreakdown(attrId)}
+        title="Why this value? Open the binding trace"
+        aria-label={`${attr.label} — show breakdown of how this value is calculated`}
+      >
+        {body}
+      </button>
+    );
+  };
 
   return (
     <div className={"summary" + (readOnly ? " summary-play" : "")}>
@@ -27,34 +60,39 @@ export function SummaryView({
         </div>
       )}
 
-      <div className="summary-grid">
-        {REGISTRY.map((attr) => {
-          const s = summary[attr.id];
-          if (!s) return null;
-          const panelClass =
-            "sum-panel k-" + s.kind.toLowerCase() + panelState(s) + (readOnly ? " read-only" : "");
-          const body = (
-            <>
-              <div className="sum-label">{labelOf(attr.id)}</div>
-              <PanelBody s={s} />
-            </>
-          );
-          return readOnly ? (
-            <div key={attr.id} className={panelClass}>
-              {body}
-            </div>
-          ) : (
-            <button
-              key={attr.id}
-              className={panelClass}
-              onClick={() => openBreakdown(attr.id)}
-              title="Why this value? Open the binding trace"
-            >
-              {body}
-            </button>
-          );
-        })}
-      </div>
+      {readOnly ? (
+        <div className="dashboard">
+          {DASHBOARD_SECTIONS.map((sec) => {
+            const panels = sec.attrs.map(renderPanel).filter(Boolean);
+            if (panels.length === 0) return null;
+            return (
+              <section className="dash-section" key={sec.title}>
+                <h3 className="dash-title">{sec.title}</h3>
+                <div className="summary-grid">{panels}</div>
+              </section>
+            );
+          })}
+
+          {crew && crew.groups.length > 0 && (
+            <section className="dash-section">
+              <h3 className="dash-title">Crew Composition</h3>
+              <div className="crew-readout">
+                {crew.groups.map((g, i) => (
+                  <div className="crew-readout-row" key={i}>
+                    <span className="cr-name">{g.name}</span>
+                    <div className="bar">
+                      <div className="bar-fill" style={{ width: Math.min(100, g.sharePct) + "%" }} />
+                    </div>
+                    <span className="cr-share">{g.sharePct}%</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      ) : (
+        <div className="summary-grid">{REGISTRY.map((attr) => renderPanel(attr.id))}</div>
+      )}
     </div>
   );
 }
@@ -70,7 +108,7 @@ function panelState(s: AttrSummary): string {
   return "";
 }
 
-function PanelBody({ s }: { s: AttrSummary }) {
+function PanelBody({ s, id }: { s: AttrSummary; id: string }) {
   switch (s.kind) {
     case "CAPACITY": {
       const pct = s.total > 0 ? Math.min(100, (s.second / s.total) * 100) : 0;
@@ -88,6 +126,10 @@ function PanelBody({ s }: { s: AttrSummary }) {
       );
     }
     case "POOL": {
+      // Morale has no meaningful maximum — show the current value alone.
+      if (id === "morale") {
+        return <div className="sum-value big">{round(s.current)}</div>;
+      }
       const pct = s.max > 0 ? Math.min(100, (s.current / s.max) * 100) : 0;
       return (
         <>
@@ -128,6 +170,7 @@ function PanelBody({ s }: { s: AttrSummary }) {
             <li key={i}>
               {e.label}
               {typeof e.mod === "number" ? ` +${e.mod}` : ""}
+              {e.note ? <span className="entry-note"> — {e.note}</span> : ""}
               {e.condition ? <span className="cond"> · {e.condition}</span> : ""}
               <span className="prov"> ({e.source})</span>
             </li>

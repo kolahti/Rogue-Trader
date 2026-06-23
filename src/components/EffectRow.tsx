@@ -1,5 +1,14 @@
+import { useState } from "react";
 import type { Binding, Op, Scope } from "../engine/types";
-import { REGISTRY, REGISTRY_BY_ID, OPS_BY_KIND } from "../engine/registry";
+import {
+  REGISTRY,
+  REGISTRY_BY_ID,
+  REGISTRY_GROUPS,
+  OPS_BY_KIND,
+  OP_LABELS,
+  OP_HINTS,
+  SCOPE_LABELS,
+} from "../engine/registry";
 
 // ---------------------------------------------------------------------------
 // The Effect Binding atom (§1.4): Attribute ▾  (the ONE picklist)  →  Op ▾  →
@@ -47,26 +56,43 @@ export function EffectRow({
   const onOp = (op: Op) => onChange({ ...binding, op, value: defaultValueFor(binding.attribute, op) });
   const set = (patch: Partial<Binding>) => onChange({ ...binding, ...patch });
 
+  const scope = binding.scope ?? "PERMANENT";
+  const conditionText = binding.condition ? Object.values(binding.condition)[0] ?? "" : "";
+  const hasAdvanced = scope !== "PERMANENT" || !!binding.note || !!conditionText;
+  const [showAdvanced, setShowAdvanced] = useState(hasAdvanced);
+  const advancedOpen = showAdvanced || hasAdvanced;
+
   return (
     <div className="effect-row">
       <div className="er-line">
-        {/* The one picklist in the whole product */}
+        {/* The one picklist in the whole product — grouped by attribute kind */}
         <select
           className="er-attr"
           value={binding.attribute}
           onChange={(e) => onAttr(e.target.value)}
+          aria-label="Attribute"
         >
-          {REGISTRY.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.label}
-            </option>
+          {REGISTRY_GROUPS.map((g) => (
+            <optgroup key={g.kind} label={g.label}>
+              {g.attrs.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.label}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
 
-        <select className="er-op" value={binding.op} onChange={(e) => onOp(e.target.value as Op)}>
+        <select
+          className="er-op"
+          value={binding.op}
+          onChange={(e) => onOp(e.target.value as Op)}
+          aria-label="Operation"
+          title={OP_HINTS[binding.op]}
+        >
           {legalOps.map((o) => (
             <option key={o} value={o}>
-              {o}
+              {OP_LABELS[o]}
             </option>
           ))}
         </select>
@@ -76,6 +102,7 @@ export function EffectRow({
             className="er-side"
             value={binding.side ?? attr.sides![0]}
             onChange={(e) => set({ side: e.target.value as any })}
+            aria-label="Capacity side"
           >
             {attr.sides!.map((s) => (
               <option key={s} value={s}>
@@ -87,40 +114,57 @@ export function EffectRow({
 
         <ValueField binding={binding} set={set} />
 
-        <button className="icon-btn danger" onClick={onRemove} title="Remove effect">
+        <button className="icon-btn danger" onClick={onRemove} title="Remove effect" aria-label="Remove effect">
           ✕
         </button>
       </div>
 
-      <div className="er-line secondary">
-        <select
-          className="er-scope"
-          value={binding.scope ?? "PERMANENT"}
-          onChange={(e) =>
-            set({ scope: e.target.value === "PERMANENT" ? undefined : (e.target.value as Scope) })
-          }
+      {!advancedOpen && (
+        <button
+          type="button"
+          className="er-advanced-toggle"
+          onClick={() => setShowAdvanced(true)}
         >
-          {SCOPES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-        {(binding.scope === "CONDITIONAL") && (
+          + When / note
+        </button>
+      )}
+
+      {advancedOpen && (
+        <div className="er-line secondary">
+          <label className="er-when">
+            <span>When</span>
+            <select
+              className="er-scope"
+              value={scope}
+              onChange={(e) =>
+                set({ scope: e.target.value === "PERMANENT" ? undefined : (e.target.value as Scope) })
+              }
+            >
+              {SCOPES.map((s) => (
+                <option key={s} value={s}>
+                  {SCOPE_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          </label>
+          {scope === "CONDITIONAL" && (
+            <input
+              className="er-cond"
+              placeholder="condition, e.g. hazardousCelestial"
+              value={conditionText}
+              onChange={(e) => set({ condition: { environment: e.target.value } })}
+              aria-label="Condition"
+            />
+          )}
           <input
-            className="er-cond"
-            placeholder="condition e.g. hazardousCelestial"
-            value={binding.condition ? Object.values(binding.condition)[0] ?? "" : ""}
-            onChange={(e) => set({ condition: { environment: e.target.value } })}
+            className="er-note"
+            placeholder="note / provenance"
+            value={binding.note ?? ""}
+            onChange={(e) => set({ note: e.target.value })}
+            aria-label="Note"
           />
-        )}
-        <input
-          className="er-note"
-          placeholder="note / provenance"
-          value={binding.note ?? ""}
-          onChange={(e) => set({ note: e.target.value })}
-        />
-      </div>
+        </div>
+      )}
     </div>
   );
 }

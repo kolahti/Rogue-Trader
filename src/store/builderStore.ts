@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { produce } from "immer";
-import type { Binding, Element, ElementType, ShipConfig } from "../engine/types";
-import { seedSheet, blankSheet } from "../data/seed";
+import type { Binding, CrewGroup, Element, ElementType, ShipConfig } from "../engine/types";
+import { seedSheet } from "../data/seed";
 
 // ---------------------------------------------------------------------------
 // Builder draft state (§3). Sheet edits live in memory; persistence via file API.
@@ -53,8 +53,7 @@ interface BuilderStore {
   commit: (fn: (s: ShipConfig) => void) => void;
   undo: () => void;
   redo: () => void;
-  reset: () => void;
-  loadBlank: () => void;
+  importSheet: (sheet: ShipConfig) => void;
 
   addElement: (type_: ElementType) => void;
   removeElement: (id: string) => void;
@@ -68,6 +67,14 @@ interface BuilderStore {
   addBinding: (elId: string, b: Binding) => void;
   updateBinding: (elId: string, idx: number, b: Binding) => void;
   removeBinding: (elId: string, idx: number) => void;
+
+  initCrew: () => void;
+  addCrewGroup: () => void;
+  updateCrewGroup: (idx: number, patch: Partial<CrewGroup>) => void;
+  removeCrewGroup: (idx: number) => void;
+
+  // Live play-state: set/clear the current value override for an attribute.
+  setCurrentValue: (attrId: string, value: number | null) => void;
 }
 
 export const useBuilder = create<BuilderStore>((set, get) => ({
@@ -138,23 +145,14 @@ export const useBuilder = create<BuilderStore>((set, get) => ({
       };
     }),
 
-  reset: () =>
+  importSheet: (sheet) =>
     set({
-      sheet: seedSheet(),
+      sheet: structuredClone(sheet),
       selectedId: "hull",
       past: [],
       future: [],
       breakdownAttr: null,
-      isDirty: true,
-      saveStatus: "idle",
-    }),
-  loadBlank: () =>
-    set({
-      sheet: blankSheet(),
-      selectedId: "hull",
-      past: [],
-      future: [],
-      breakdownAttr: null,
+      isPlayMode: false,
       isDirty: true,
       saveStatus: "idle",
     }),
@@ -216,5 +214,38 @@ export const useBuilder = create<BuilderStore>((set, get) => ({
     get().commit((s) => {
       const el = findEl(s, elId);
       if (el) el.bindings.splice(idx, 1);
+    }),
+
+  initCrew: () =>
+    get().commit((s) => {
+      if (!s.crewComposition)
+        s.crewComposition = { groups: [{ name: "Crew", sharePct: 100 }], bindings: [] };
+    }),
+
+  addCrewGroup: () =>
+    get().commit((s) => {
+      if (!s.crewComposition) s.crewComposition = { groups: [], bindings: [] };
+      s.crewComposition.groups.push({ name: "New group", sharePct: 0 });
+    }),
+
+  updateCrewGroup: (idx, patch) =>
+    get().commit((s) => {
+      const g = s.crewComposition?.groups[idx];
+      if (g) Object.assign(g, patch);
+    }),
+
+  removeCrewGroup: (idx) =>
+    get().commit((s) => {
+      s.crewComposition?.groups.splice(idx, 1);
+    }),
+
+  setCurrentValue: (attrId, value) =>
+    get().commit((s) => {
+      if (value == null) {
+        if (s.current) delete s.current[attrId];
+      } else {
+        if (!s.current) s.current = {};
+        s.current[attrId] = value;
+      }
     }),
 }));

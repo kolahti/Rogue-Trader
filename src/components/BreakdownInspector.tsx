@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { ComputeResult } from "../engine/types";
 import { labelOf } from "../engine/registry";
 import { useBuilder } from "../store/builderStore";
@@ -13,13 +14,29 @@ export function BreakdownInspector({
   const close = () => useBuilder.getState().openBreakdown(null);
   const entries = result.trace[attr] ?? [];
   const s = result.summary[attr];
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <div className="modal-backdrop" onClick={close}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="breakdown-title"
+      >
         <div className="modal-head">
-          <h3>Breakdown · {labelOf(attr)}</h3>
-          <button className="icon-btn" onClick={close}>✕</button>
+          <h3 id="breakdown-title">Breakdown · {labelOf(attr)}</h3>
+          <button className="icon-btn" onClick={close} ref={closeRef} aria-label="Close breakdown">✕</button>
         </div>
 
         <div className="modal-summary">{describe(s)}</div>
