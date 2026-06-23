@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useBuilder } from "../store/builderStore";
 import type { Element } from "../engine/types";
+import { CrewComposition } from "./CrewComposition";
 
 export function BuilderCanvas() {
   const sheet = useBuilder((s) => s.sheet);
@@ -50,7 +51,33 @@ export function BuilderCanvas() {
             onDragEnd={() => setDragIndex(null)}
             onClick={() => select(el.id)}
           >
-            <span className="drag-grip" title="Drag to reorder">⋮⋮</span>
+            <span className="drag-grip" title="Drag to reorder" aria-hidden="true">⋮⋮</span>
+            <div className="reorder-btns">
+              <button
+                className="icon-btn reorder"
+                title="Move up"
+                aria-label={`Move ${el.name} up`}
+                disabled={i === 0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  reorderElement(i, i - 1);
+                }}
+              >
+                ▲
+              </button>
+              <button
+                className="icon-btn reorder"
+                title="Move down"
+                aria-label={`Move ${el.name} down`}
+                disabled={i === sheet.elements.length - 1}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  reorderElement(i, i + 1);
+                }}
+              >
+                ▼
+              </button>
+            </div>
             <input
               type="checkbox"
               checked={el.enabled}
@@ -60,6 +87,7 @@ export function BuilderCanvas() {
               }}
               onClick={(e) => e.stopPropagation()}
               title="Enable / disable"
+              aria-label={`${el.enabled ? "Disable" : "Enable"} ${el.name}`}
             />
             <div className="card-body">
               <div className="card-head">
@@ -72,8 +100,9 @@ export function BuilderCanvas() {
               </span>
             </div>
             <button
-              className="icon-btn danger"
+              className="icon-btn danger card-delete"
               title="Delete"
+              aria-label={`Delete ${el.name}`}
               onClick={(e) => {
                 e.stopPropagation();
                 removeElement(el.id);
@@ -84,6 +113,8 @@ export function BuilderCanvas() {
           </div>
         ))}
       </div>
+
+      <CrewComposition />
     </div>
   );
 }

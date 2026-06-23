@@ -46,7 +46,8 @@ function gather(sheet: ShipConfig): SourcedBinding[] {
 function foldAttr(
   attr: AttributeDef,
   bs: SourcedBinding[],
-  conditionalMods: ListEntry[]
+  conditionalMods: ListEntry[],
+  currentOverride?: number
 ): AttrSummary {
   switch (attr.kind) {
     case "CAPACITY": {
@@ -61,8 +62,11 @@ function foldAttr(
         return v;
       };
       const total = calcSide("total", 0);
-      // population's "current" defaults to full headcount when nothing reduces it
-      const second = calcSide(secondLabel, secondLabel === "current" ? total : 0);
+      // current side defaults to full headcount; a live override wins, clamped.
+      let second = calcSide(secondLabel, secondLabel === "current" ? total : 0);
+      if (secondLabel === "current" && currentOverride != null) {
+        second = Math.max(0, Math.min(total, currentOverride));
+      }
       return { kind: "CAPACITY", total, second, secondLabel, spare: total - second };
     }
 
@@ -72,8 +76,9 @@ function foldAttr(
       if (setMax.length) max = num(setMax[setMax.length - 1].value);
       for (const b of bs) if (b.op === "ADD") max += num(b.value);
       for (const b of bs) if (b.op === "CLAMP_MIN") max = Math.max(max, num(b.value));
-      // no play-state in the builder: current tracks max
-      return { kind: "POOL", max, current: max };
+      // current tracks max unless a live override is set (clamped to 0..max).
+      const current = currentOverride != null ? Math.max(0, Math.min(max, currentOverride)) : max;
+      return { kind: "POOL", max, current };
     }
 
     case "SCALAR": {
@@ -233,7 +238,7 @@ export function compute(sheet: ShipConfig, registry = REGISTRY): ComputeResult {
       note: b.note,
       scope: b.scope,
     }));
-    summary[attr.id] = foldAttr(attr, mine, conditionalMods);
+    summary[attr.id] = foldAttr(attr, mine, conditionalMods, sheet.current?.[attr.id]);
   }
 
   // merge conditional scalar effects into the skillMods list

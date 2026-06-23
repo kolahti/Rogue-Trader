@@ -97,6 +97,28 @@ function makeSeed(): ShipConfig {
           { attribute: "abilities", op: "GRANT", value: { label: "Lit the Void", note: "combat action" } },
         ],
       },
+      {
+        id: "e6",
+        type_: "Component",
+        name: "Sanctified Lance Battery",
+        subtype: "Weapon",
+        description: "Prow-mounted lance, sanctified by the Ecclesiarchy.",
+        enabled: true,
+        bindings: [
+          { attribute: "weaponSlots", op: "OCCUPY", value: { prow: 1 } },
+          { attribute: "power", side: "consumed", op: "ADD", value: 4 },
+          { attribute: "space", side: "consumed", op: "ADD", value: 2 },
+          { attribute: "shipPoints", side: "consumed", op: "ADD", value: 2 },
+          {
+            attribute: "weapons",
+            op: "GRANT",
+            value: {
+              label: "Sanctified Lance Battery",
+              note: "Str 5 · Dam 3 · 1d10+6 · Crit 2 · Range 1/2/4 · Special: Half range, Holy",
+            },
+          },
+        ],
+      },
     ],
     crewComposition: {
       groups: [

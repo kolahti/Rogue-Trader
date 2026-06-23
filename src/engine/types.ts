@@ -88,6 +88,9 @@ export interface ShipConfig {
   hull: Element;
   elements: Element[];
   crewComposition?: CrewComposition;
+  // Live play-state: current value per attribute (POOL current, CAPACITY current
+  // side). Absent → derived value tracks max/total. Clamped to 0..max at compute.
+  current?: Record<string, number>;
 }
 
 // ---------------------------------------------------------------------------
