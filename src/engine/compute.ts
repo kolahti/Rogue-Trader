@@ -8,7 +8,7 @@ import type {
   ShipConfig,
   TraceEntry,
 } from "./types";
-import { REGISTRY, labelOf } from "./registry";
+import { REGISTRY, labelOf, weaponStatLine } from "./registry";
 
 // ---------------------------------------------------------------------------
 // THE RESOLUTION ENGINE — pure, deterministic, dependency-free (§4a).
@@ -75,6 +75,7 @@ function foldAttr(
       const setMax = bs.filter((b) => b.op === "SET_MAX");
       if (setMax.length) max = num(setMax[setMax.length - 1].value);
       for (const b of bs) if (b.op === "ADD") max += num(b.value);
+      for (const b of bs) if (b.op === "SUBTRACT") max -= num(b.value);
       for (const b of bs) if (b.op === "CLAMP_MIN") max = Math.max(max, num(b.value));
       // current tracks max unless a live override is set (clamped to 0..max).
       const current = currentOverride != null ? Math.max(0, Math.min(max, currentOverride)) : max;
@@ -90,7 +91,7 @@ function foldAttr(
         if ((b.scope ?? "PERMANENT") !== "PERMANENT") {
           conditionalMods.push({
             label: attr.label,
-            mod: num(b.value),
+            mod: b.op === "SUBTRACT" ? -num(b.value) : num(b.value),
             condition: b.condition
               ? Object.values(b.condition).join(", ")
               : b.scope,
@@ -100,6 +101,7 @@ function foldAttr(
       }
       for (const b of perm) if (b.op === "SET") v = num(b.value);
       for (const b of perm) if (b.op === "ADD") v += num(b.value);
+      for (const b of perm) if (b.op === "SUBTRACT") v -= num(b.value);
       for (const b of perm) if (b.op === "MULTIPLY") v *= num(b.value);
       for (const b of perm) if (b.op === "CLAMP_MIN") v = Math.max(v, num(b.value));
       return { kind: "SCALAR", value: v };
@@ -138,9 +140,17 @@ function foldAttr(
       for (const b of bs) {
         const val: any = b.value;
         if (b.op === "GRANT") {
+          const stats = attr.id === "weapons" ? weaponStatLine(val) : "";
+          const scope = b.scope ?? "PERMANENT";
           entries.push({
             label: typeof val === "string" ? val : val?.label ?? "",
-            note: typeof val === "object" ? val?.note : undefined,
+            note: stats || (typeof val === "object" ? val?.note : undefined),
+            condition:
+              scope === "PERMANENT"
+                ? undefined
+                : b.condition
+                  ? Object.values(b.condition).join(", ")
+                  : b.scope,
             source: b.__source,
           });
         } else if (b.op === "ADD_SKILL_MOD") {

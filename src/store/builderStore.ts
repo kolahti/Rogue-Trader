@@ -1,6 +1,14 @@
 import { create } from "zustand";
 import { produce } from "immer";
-import type { Binding, CrewGroup, Element, ElementType, ShipConfig } from "../engine/types";
+import type {
+  Binding,
+  CrewGroup,
+  Element,
+  ElementType,
+  InfoLink,
+  ShipConfig,
+  WeaponSpec,
+} from "../engine/types";
 import { seedSheet } from "../data/seed";
 
 // ---------------------------------------------------------------------------
@@ -15,7 +23,7 @@ export type SaveStatus = "idle" | "loading" | "saving" | "saved" | "error";
 
 const NEW_ELEMENT_DEFAULT: Record<ElementType, Partial<Element>> = {
   Hull: { name: "Hull" },
-  Component: { name: "New Component", subtype: "Supplemental" },
+  Component: { name: "New Component", subtype: "Supplemental", quality: "Common" },
   PastHistory: { name: "New Past History" },
   MachineSpirit: { name: "New Machine Spirit" },
   Ability: { name: "New Ability" },
@@ -60,13 +68,18 @@ interface BuilderStore {
   toggleElement: (id: string) => void;
   updateElementMeta: (
     id: string,
-    patch: Partial<Pick<Element, "name" | "subtype" | "description">>
+    patch: Partial<Pick<Element, "name" | "subtype" | "quality" | "location" | "description">>
   ) => void;
   reorderElement: (from: number, to: number) => void;
 
   addBinding: (elId: string, b: Binding) => void;
   updateBinding: (elId: string, idx: number, b: Binding) => void;
   removeBinding: (elId: string, idx: number) => void;
+
+  addLink: (elId: string) => void;
+  updateLink: (elId: string, idx: number, patch: Partial<InfoLink>) => void;
+  removeLink: (elId: string, idx: number) => void;
+  setWeaponSpec: (elId: string, spec: WeaponSpec) => void;
 
   initCrew: () => void;
   addCrewGroup: () => void;
@@ -187,7 +200,13 @@ export const useBuilder = create<BuilderStore>((set, get) => ({
   updateElementMeta: (id, patch) =>
     get().commit((s) => {
       const el = findEl(s, id);
-      if (el) Object.assign(el, patch);
+      if (!el) return;
+      Object.assign(el, patch);
+      // Keep the weapon list entry's label in step with the component name.
+      if (patch.name != null) {
+        const grant = el.bindings.find((b) => b.attribute === "weapons" && b.op === "GRANT");
+        if (grant && grant.value && typeof grant.value === "object") grant.value.label = el.name;
+      }
     }),
 
   reorderElement: (from, to) =>
@@ -214,6 +233,58 @@ export const useBuilder = create<BuilderStore>((set, get) => ({
     get().commit((s) => {
       const el = findEl(s, elId);
       if (el) el.bindings.splice(idx, 1);
+    }),
+
+  addLink: (elId) =>
+    get().commit((s) => {
+      const el = findEl(s, elId);
+      if (!el) return;
+      if (!el.links) el.links = [];
+      el.links.push({ label: "New Link", description: "" });
+    }),
+
+  updateLink: (elId, idx, patch) =>
+    get().commit((s) => {
+      const el = findEl(s, elId);
+      const link = el?.links?.[idx];
+      if (link) Object.assign(link, patch);
+    }),
+
+  removeLink: (elId, idx) =>
+    get().commit((s) => {
+      const el = findEl(s, elId);
+      if (el?.links) el.links.splice(idx, 1);
+    }),
+
+  setWeaponSpec: (elId, spec) =>
+    get().commit((s) => {
+      const el = findEl(s, elId);
+      if (!el) return;
+      const occupy: Binding = {
+        attribute: "weaponSlots",
+        op: "OCCUPY",
+        value: { [spec.mount]: spec.slots },
+      };
+      const grant: Binding = {
+        attribute: "weapons",
+        op: "GRANT",
+        value: {
+          label: el.name,
+          strength: spec.strength,
+          damage: spec.damage,
+          crit: spec.crit,
+          rangeShort: spec.rangeShort,
+          rangeMedium: spec.rangeMedium,
+          rangeLong: spec.rangeLong,
+          special: spec.special,
+        },
+      };
+      const oi = el.bindings.findIndex((b) => b.attribute === "weaponSlots" && b.op === "OCCUPY");
+      if (oi >= 0) el.bindings[oi] = occupy;
+      else el.bindings.push(occupy);
+      const gi = el.bindings.findIndex((b) => b.attribute === "weapons" && b.op === "GRANT");
+      if (gi >= 0) el.bindings[gi] = grant;
+      else el.bindings.push(grant);
     }),
 
   initCrew: () =>

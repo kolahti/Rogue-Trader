@@ -297,6 +297,11 @@ button.ghost { background: transparent; }
 .bar { height: 7px; background: var(--bg-2); border-radius: 4px; overflow: hidden; border: 1px solid var(--line-soft); }
 .bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #7fa7d9); }
 .bar.pool .bar-fill { background: linear-gradient(90deg, var(--ok), #6fc0a0); }
+.pool-controls { display: flex; gap: 6px; margin-top: 8px; }
+.pool-step { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 26px; padding: 0; background: var(--bg-2); border: 1px solid var(--line); border-radius: 4px; color: var(--ink); cursor: pointer; }
+.pool-step svg { display: block; width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.pool-step:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.pool-step:disabled { opacity: 0.4; cursor: default; }
 .chip { background: var(--bg-2); border: 1px solid var(--gold-soft); color: var(--gold); padding: 2px 8px; border-radius: 10px; font-weight: 600; }
 .scale-hint { display: block; font-size: 10px; color: var(--ink-faint); margin-top: 4px; }
 .slots { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -307,15 +312,130 @@ button.ghost { background: transparent; }
 .list-entries .entry-note { color: var(--ink-faint); }
 .list-entries .prov { color: var(--ink-faint); font-size: 11px; }
 
+/* Component readout — each building block as its own entity (build + play) */
+.component-block { margin-top: 22px; }
+.sub-title {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-dim);
+  margin: 0 0 10px; font-weight: 600;
+}
+.component-readout {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px;
+}
+.comp-card {
+  text-align: left; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 11px 13px; display: flex; flex-direction: column; gap: 7px;
+}
+.comp-card:not(.read-only) { cursor: pointer; }
+.comp-card:hover:not(.read-only) { border-color: var(--accent); }
+.comp-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.comp-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.comp-name { font-weight: 600; }
+.comp-subtype {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--ink-faint);
+  border: 1px solid var(--line-soft); border-radius: 10px; padding: 1px 7px;
+}
+.comp-location {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent);
+  border: 1px solid var(--line-soft); border-radius: 10px; padding: 1px 7px;
+}
+.comp-quality {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+  border-radius: 10px; padding: 1px 7px; border: 1px solid currentColor;
+}
+.comp-quality.q-poor { color: #b06a6a; }
+.comp-quality.q-common { color: var(--ink-faint); }
+.comp-quality.q-good { color: #7fa77f; }
+.comp-quality.q-best { color: var(--gold); }
+.comp-desc { margin: 0; font-size: 12px; color: var(--ink-dim); line-height: 1.4; }
+.comp-footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
+.comp-footer .comp-links:first-child { margin-top: 0; }
+
+/* Rendered markdown (descriptions + link popups) — tight block spacing */
+.comp-desc p, .link-modal-body p { margin: 0 0 6px; }
+.comp-desc p:last-child, .link-modal-body p:last-child { margin-bottom: 0; }
+.comp-desc ul, .comp-desc ol, .link-modal-body ul, .link-modal-body ol { margin: 4px 0; padding-left: 18px; }
+.comp-desc h1, .comp-desc h2, .comp-desc h3, .comp-desc h4,
+.link-modal-body h1, .link-modal-body h2, .link-modal-body h3, .link-modal-body h4 {
+  margin: 8px 0 4px; font-weight: 700; line-height: 1.25; color: var(--ink);
+}
+.comp-desc h1, .link-modal-body h1 { font-size: 1.5em; }
+.comp-desc h2, .link-modal-body h2 { font-size: 1.3em; }
+.comp-desc h3, .link-modal-body h3 { font-size: 1.12em; }
+.comp-desc h4, .link-modal-body h4 { font-size: 1em; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gold); }
+.comp-desc :first-child, .link-modal-body :first-child { margin-top: 0; }
+.comp-desc code, .link-modal-body code {
+  font-family: var(--mono); font-size: 0.92em; background: var(--bg-2);
+  padding: 0 3px; border-radius: 3px;
+}
+.comp-desc a, .link-modal-body a { color: var(--accent); }
+
+/* Play-view links — clickable text that opens a description popup */
+.comp-links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.comp-link {
+  background: none; border: none; padding: 0; font: inherit; font-size: 12px;
+  color: var(--accent); text-decoration: underline; cursor: pointer;
+}
+.comp-link:hover { color: var(--gold); border-color: transparent; }
+.link-modal { max-width: 460px; }
+.link-modal-body { margin: 0; color: var(--ink-dim); line-height: 1.5; }
+
+/* Build-view link editor rows */
+.link-rows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.link-row { display: flex; flex-direction: column; gap: 5px; padding: 8px; background: var(--bg-2); border: 1px solid var(--line-soft); border-radius: 6px; }
+.link-row-head { display: flex; gap: 6px; align-items: center; }
+.link-label { flex: 1; }
+.comp-effects {
+  margin: 0; padding-left: 16px; font-size: 12px; display: flex; flex-direction: column; gap: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.comp-effects .comp-note { color: var(--ink-faint); }
+
+/* Weapon detail card (play-mode Armament) */
+.weapon-readout { margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.weapon-readout .wr-row { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; }
+.weapon-readout dt { color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.5px; font-size: 10px; }
+.weapon-readout dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.weapon-readout .wr-cond {
+  display: block; margin-top: 2px; font-size: 11px; color: var(--ink-faint);
+  text-transform: none; letter-spacing: normal;
+}
+.wr-special { margin: 0; font-size: 12px; color: var(--ink-dim); line-height: 1.4; }
+
+.skill-mods { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.skill-mods-title { color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.5px; font-size: 10px; }
+.skill-mods .sm-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 12px; }
+.skill-mods .sm-desc { display: flex; flex-direction: column; }
+.skill-mods .sm-cond { font-size: 11px; color: var(--ink-faint); }
+.skill-mods .sm-value { font-weight: 600; font-variant-numeric: tabular-nums; }
+.skill-mods .sm-source {
+  align-self: flex-start; margin-top: 3px; font-size: 10px; color: var(--ink-dim);
+  background: var(--bg-2); border: 1px solid var(--line-soft); border-radius: 4px; padding: 1px 6px;
+}
+
 /* Inspector */
 .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
 .field > span { font-size: 11px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+.field .field-hint { font-size: 10px; color: var(--ink-faint); text-transform: none; letter-spacing: 0; }
 input, select, textarea {
   background: var(--bg-2); color: var(--ink); border: 1px solid var(--line);
   border-radius: 6px; padding: 7px 9px; font: inherit;
 }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
 textarea { resize: vertical; }
+
+/* Weapon form */
+.weapon-form {
+  margin-top: 8px; padding: 12px; border: 1px solid var(--gold-soft);
+  border-radius: var(--radius); background: var(--bg-2);
+}
+.weapon-form .sub-title { margin-top: 0; color: var(--gold); }
+.weapon-form .field { margin-bottom: 0; }
+.weapon-stats, .weapon-range, .weapon-mount {
+  display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px;
+}
+.weapon-stats input, .weapon-range input, .weapon-mount input {
+  font-variant-numeric: tabular-nums;
+}
 
 .effects-head { display: flex; justify-content: space-between; align-items: center; margin: 16px 0 8px; font-size: 12px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.5px; }
 .add-effect { background: var(--gold); color: #1a1305; border: none; font-weight: 600; }
@@ -346,6 +466,7 @@ textarea { resize: vertical; }
 .modal { background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; width: min(760px, 92vw); max-height: 82vh; overflow: auto; padding: 18px; }
 .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .modal-head h3 { margin: 0; }
+.link-modal .modal-head h3 { font-size: 1.5em; font-weight: 700; }
 .modal-summary { font-family: var(--mono); color: var(--gold); margin-bottom: 14px; font-size: 14px; }
 .trace-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .trace-table th, .trace-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line-soft); }
