@@ -13,6 +13,7 @@ export type AttributeKind =
 
 export type Op =
   | "ADD"
+  | "SUBTRACT"
   | "MULTIPLY"
   | "SET"
   | "SET_MAX"
@@ -59,15 +60,40 @@ export interface Binding {
   note?: string;
 }
 
+// A named text link on an element; the description shows in a popup when the
+// link is opened in play view.
+export interface InfoLink {
+  label: string;
+  description: string;
+}
+
 // Every custom building block — one shape.
 export interface Element {
   id: string;
   type_: ElementType;
   name: string;
   subtype?: string;
+  quality?: string; // Component only: Poor | Common | Good | Best
+  location?: string; // Component only: Upper Decks | Hold
   description?: string;
+  links?: InfoLink[];
   enabled: boolean;
   bindings: Binding[];
+}
+
+// Structured stats for a Weapon-class component. Authored via the weapon form,
+// persisted as a weaponSlots OCCUPY binding (mount + slots) plus a weapons GRANT
+// binding (damage/crit/range/special) — no new sheet field.
+export interface WeaponSpec {
+  strength: number;
+  damage: string;
+  crit: number;
+  rangeShort: number;
+  rangeMedium: number;
+  rangeLong: number;
+  mount: string;
+  slots: number;
+  special: string;
 }
 
 export interface CrewGroup {
